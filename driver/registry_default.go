@@ -361,8 +361,11 @@ func (m *RegistryDefault) SessionHandler() *session.Handler {
 
 func (m *RegistryDefault) Hasher() hash.Hasher {
 	if m.passwordHasher == nil {
-		if m.c.HasherPasswordHashingAlgorithm() == "bcrypt" {
+		hashingAlgorithm := m.c.HasherPasswordHashingAlgorithm()
+		if hashingAlgorithm == "bcrypt" {
 			m.passwordHasher = hash.NewHasherBcrypt(m)
+		} else if hashingAlgorithm == "custom" {
+			m.passwordHasher = hash.NewHasherCustom(m)
 		} else {
 			m.passwordHasher = hash.NewHasherArgon2(m)
 		}

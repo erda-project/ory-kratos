@@ -2,8 +2,10 @@ package hash
 
 import (
 	"context"
+	"crypto/sha512"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -22,6 +24,8 @@ func Compare(ctx context.Context, password []byte, hash []byte) error {
 		return CompareBcrypt(ctx, password, hash)
 	} else if IsArgon2idHash(hash) {
 		return CompareArgon2id(ctx, password, hash)
+	} else if IsCustomHash(hash) {
+		return CompareCustom(ctx, password, hash)
 	} else {
 		return ErrUnknownHashAlgorithm
 	}
@@ -60,6 +64,21 @@ func CompareArgon2id(_ context.Context, password []byte, hash []byte) error {
 	return ErrMismatchedHashAndPassword
 }
 
+func CompareCustom(_ context.Context, password []byte, hash []byte) error {
+	parts := strings.Split(string(hash), "@")
+	if len(parts) < 2 {
+		return ErrInvalidHash
+	}
+	salt, realPass := parts[0], parts[1]
+	sha := sha512.New()
+	sha.Write([]byte(string(password) + salt))
+	encoded := hex.EncodeToString(sha.Sum(nil))[:20]
+	if subtle.ConstantTimeCompare([]byte(encoded), []byte(realPass)) == 1 {
+		return nil
+	}
+	return ErrMismatchedHashAndPassword
+}
+
 func IsBcryptHash(hash []byte) bool {
 	res, _ := regexp.Match("^\\$2[abzy]?\\$", hash)
 	return res
@@ -67,6 +86,11 @@ func IsBcryptHash(hash []byte) bool {
 
 func IsArgon2idHash(hash []byte) bool {
 	res, _ := regexp.Match("^\\$argon2id\\$", hash)
+	return res
+}
+
+func IsCustomHash(hash []byte) bool {
+	res, _ := regexp.Match("^.{4}@.{20}$", hash)
 	return res
 }
 

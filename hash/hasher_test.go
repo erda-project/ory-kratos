@@ -148,4 +148,27 @@ func TestCompare(t *testing.T) {
 	assert.Nil(t, hash.Compare(context.Background(), []byte("test"), []byte("$argon2id$v=19$m=32,t=5,p=4$cm94YnRVOW5jZzFzcVE4bQ$fBxypOL0nP/zdPE71JtAV71i487LbX3fJI5PoTN6Lp4")))
 	assert.Nil(t, hash.CompareArgon2id(context.Background(), []byte("test"), []byte("$argon2id$v=19$m=32,t=5,p=4$cm94YnRVOW5jZzFzcVE4bQ$fBxypOL0nP/zdPE71JtAV71i487LbX3fJI5PoTN6Lp4")))
 	assert.Error(t, hash.Compare(context.Background(), []byte("test"), []byte("$argon2id$v=19$m=32,t=5,p=4$cm94YnRVOW5jZzFzcVE4bQ$fBxypOL0nP/zdPE71JtAV71i487LbX3fJI5PoTN6Lp5")))
+
+	assert.Nil(t, hash.CompareCustom(context.Background(), []byte("test"), []byte("f1d2@5cb452466722347b4e52")))
+	assert.Nil(t, hash.CompareCustom(context.Background(), []byte("test"), []byte("f451@b441460d45f3bd05e7ac")))
+	assert.Error(t, hash.CompareCustom(context.Background(), []byte("test"), []byte("f4c6@ed3c22ffd294a6a98d67")))
+}
+
+func TestComparatorCustomFail(t *testing.T) {
+	for k, pw := range [][]byte{
+		mkpw(t, 8),
+		mkpw(t, 16),
+		mkpw(t, 32),
+		mkpw(t, 64),
+		mkpw(t, 72),
+	} {
+		t.Run(fmt.Sprintf("case=%d", k), func(t *testing.T) {
+			mod := make([]byte, len(pw))
+			copy(mod, pw)
+			mod[len(pw)-1] = ^pw[len(pw)-1]
+
+			err := hash.CompareCustom(context.Background(), pw, mod)
+			assert.Error(t, err)
+		})
+	}
 }
